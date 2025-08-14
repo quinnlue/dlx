@@ -6,7 +6,7 @@ This script demonstrates how to use the core components of the DLX package
 including tensors, modules, losses, and optimizers.
 """
 
-import dlx
+import dlx as dlx
 from dlx import Tensor, Module, Linear, CrossEntropyWithLogits, AdamW
 
 def main():

@@ -6,6 +6,7 @@ try:
         print("CUDA not available")
         raise ImportError("CUDA not available")
 except (ImportError, ModuleNotFoundError):
+    print("CUDA not available")
     import numpy as xp
 
 

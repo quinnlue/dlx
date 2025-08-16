@@ -44,8 +44,9 @@ class Transformer(Module):
         kt = k.transpose((0, 1, 3, 2))
 
         atten_scores = q @ kt * (1 / (self.d_head ** 0.5))
-        casual_mask = xp.triu(xp.ones((T, T)) * -xp.inf, k=1).astype(atten_scores.dtype)
-        atten_scores = atten_scores + casual_mask
+        causal_mask = xp.triu(xp.full((T, T), fill_value=-xp.inf, dtype=atten_scores.dtype), k=1)
+
+        atten_scores = atten_scores + causal_mask
 
         atten_probs = self.softmax(atten_scores, axis=3)
 

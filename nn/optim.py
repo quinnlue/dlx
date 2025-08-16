@@ -23,27 +23,19 @@ class Optimizer:
             self.model_dtype = self.master_dtype = xp.float32
             self.mixed_precision = False
 
-        # if self.model_dtype == xp.float16:
-        #     self.model_eps = 1e-5
-        # elif self.model_dtype == xp.float32 or self.model_dtype == xp.float64:
-        #     self.model_eps = 1e-8
-        # else:
-        #     raise ValueError("model_dtype must be float16, float32, or float64")
+        if self.model_dtype == xp.float16:
+            self.model_eps = 1e-5
+        elif self.model_dtype == xp.float32 or self.model_dtype == xp.float64:
+            self.model_eps = 1e-8
+        else:
+            raise ValueError("model_dtype must be float16, float32, or float64")
         
-        # if self.master_dtype == xp.float16:
-        #     self.master_eps = 1e-5
-        # elif self.master_dtype == xp.float32 or self.master_dtype == xp.float64:
-        #     self.master_eps = 1e-8
-        # else:
-        #     raise ValueError("master_dtype must be float16, float32, or float64")
-
-        # TODO: remove hard coded eps
-        self.master_eps = 1e-8
-        self.model_eps = 1e-8
-
-        # TODO: remove hard coded dtype
-        self.master_dtype = xp.float32
-        self.model_dtype = xp.float32
+        if self.master_dtype == xp.float16:
+            self.master_eps = 1e-5
+        elif self.master_dtype == xp.float32 or self.master_dtype == xp.float64:
+            self.master_eps = 1e-8
+        else:
+            raise ValueError("master_dtype must be float16, float32, or float64")
 
         
         

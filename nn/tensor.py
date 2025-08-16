@@ -1,7 +1,7 @@
 from ..utils.backend import xp
 
 class Tensor:
-    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5, dtype=xp.float32):
+    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5, dtype=xp.float16):
         if isinstance(data, xp.ndarray) and data.dtype == dtype:
             self.data = data
         else:
@@ -14,8 +14,10 @@ class Tensor:
         self.requires_mask = requires_mask
         self.mask = None
         self.name = name
-        # TODO: remove hard coded eps
-        self.eps = 1e-8
+        if dtype == xp.float16:
+            self.eps = 1e-5
+        else:
+            self.eps = 1e-8
 
         self.is_cuda = xp.__name__ == "cupy"
 

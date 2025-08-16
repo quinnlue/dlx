@@ -33,7 +33,9 @@ class TestLayernorm(unittest.TestCase):
         class MyLayernorm(Module):
             def __init__(self, d_model, n_heads):
                 super().__init__()
-                self.layernorm = self.layer_norm(axis=-1, eps=1e-5)
+                self.d_model = d_model
+                self.n_heads = n_heads
+                self.layernorm = self.layer_norm(shape=self.d_model, axis=-1, eps=1e-5)
 
             def forward(self, x):
                 return self.layernorm(x)

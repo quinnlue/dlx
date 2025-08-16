@@ -25,15 +25,12 @@ class TestAttend(unittest.TestCase):
         self.n_heads = 2
         self.d_head = self.d_model // self.n_heads
 
-        self.q_weight = xp.random.randn(self.d_model, self.d_model).astype(xp.float32)
-        self.k_weight = xp.random.randn(self.d_model, self.d_model).astype(xp.float32)
-        self.v_weight = xp.random.randn(self.d_model, self.d_model).astype(xp.float32)
-        self.o_weight = xp.random.randn(self.d_model, self.d_model).astype(xp.float32)
+        self.qkv_weight = xp.random.randn(self.d_model, self.d_model * 3).astype(xp.float32)
+        self.qkv_bias = xp.random.randn(self.d_model * 3).astype(xp.float32)
 
-        self.q_bias = xp.random.randn(self.d_model).astype(xp.float32)
-        self.k_bias = xp.random.randn(self.d_model).astype(xp.float32)
-        self.v_bias = xp.random.randn(self.d_model).astype(xp.float32)
+        self.o_weight = xp.random.randn(self.d_model, self.d_model).astype(xp.float32)
         self.o_bias = xp.random.randn(self.d_model).astype(xp.float32)
+
 
         self.gamma_1 = xp.ones(self.d_model).astype(xp.float32)
         self.beta_1 = xp.zeros(self.d_model).astype(xp.float32)
@@ -50,19 +47,16 @@ class TestAttend(unittest.TestCase):
         def my_attend(x):
             B, T, _ = x.shape
 
-            q_weight = Tensor(self.q_weight.copy(), requires_grad=True)
-            k_weight = Tensor(self.k_weight.copy(), requires_grad=True)
-            v_weight = Tensor(self.v_weight.copy(), requires_grad=True)
-            o_weight = Tensor(self.o_weight.copy(), requires_grad=True)
+            qkv_weight = Tensor(self.qkv_weight.copy(), requires_grad=True)
+            qkv_bias = Tensor(self.qkv_bias.copy(), requires_grad=True)
 
-            q_bias = Tensor(self.q_bias.copy(), requires_grad=True)
-            k_bias = Tensor(self.k_bias.copy(), requires_grad=True)
-            v_bias = Tensor(self.v_bias.copy(), requires_grad=True)
+            o_weight = Tensor(self.o_weight.copy(), requires_grad=True)
             o_bias = Tensor(self.o_bias.copy(), requires_grad=True)
 
-            q = x @ q_weight + q_bias
-            k = x @ k_weight + k_bias
-            v = x @ v_weight + v_bias
+            qkv = x @ qkv_weight + qkv_bias
+            q = qkv[:, :, :self.d_model]
+            k = qkv[:, :, self.d_model:self.d_model * 2]
+            v = qkv[:, :, self.d_model * 2:]
 
             q  = q.reshape((B, T, self.n_heads, self.d_head))
             k  = k.reshape((B, T, self.n_heads, self.d_head))
@@ -88,24 +82,21 @@ class TestAttend(unittest.TestCase):
 
             output = output @ o_weight + o_bias
 
-            return output, [q_weight, k_weight, v_weight, o_weight, q_bias, k_bias, v_bias, o_bias]
+            return output, [qkv_weight, o_weight, qkv_bias, o_bias]
         
         def pt_attend(x):
             B, T, _ = x.size()
 
-            q_weight = torch.tensor(self.q_weight.copy(), requires_grad=True)
-            k_weight = torch.tensor(self.k_weight.copy(), requires_grad=True)
-            v_weight = torch.tensor(self.v_weight.copy(), requires_grad=True)
+            qkv_weight = torch.tensor(self.qkv_weight.copy(), requires_grad=True)
             o_weight = torch.tensor(self.o_weight.copy(), requires_grad=True)
 
-            q_bias = torch.tensor(self.q_bias.copy(), requires_grad=True)
-            k_bias = torch.tensor(self.k_bias.copy(), requires_grad=True)
-            v_bias = torch.tensor(self.v_bias.copy(), requires_grad=True)
+            qkv_bias = torch.tensor(self.qkv_bias.copy(), requires_grad=True)
             o_bias = torch.tensor(self.o_bias.copy(), requires_grad=True)
 
-            q = x @ q_weight + q_bias
-            k = x @ k_weight + k_bias
-            v = x @ v_weight + v_bias
+            qkv = x @ qkv_weight + qkv_bias
+            q = qkv[:, :, :self.d_model]
+            k = qkv[:, :, self.d_model:self.d_model * 2]
+            v = qkv[:, :, self.d_model * 2:]
 
             q = q.view(B, T, self.n_heads, self.d_head).permute(0, 2, 1, 3)
             k = k.view(B, T, self.n_heads, self.d_head).permute(0, 2, 1, 3)
@@ -127,7 +118,7 @@ class TestAttend(unittest.TestCase):
             
             attn_output = attn_output @ o_weight + o_bias
             
-            return attn_output, [q_weight, k_weight, v_weight, o_weight, q_bias, k_bias, v_bias, o_bias]
+            return attn_output, [qkv_weight, o_weight, qkv_bias, o_bias]
         
         self.pt_attend = pt_attend        
         self.my_attend = my_attend

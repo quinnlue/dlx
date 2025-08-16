@@ -10,11 +10,7 @@ class TransformerBlock(nn.Module):
         self.num_heads = num_heads
         self.head_dim = d_model // num_heads
         
-        # Separate Q, K, V projections
-        self.q = nn.Linear(d_model, d_model)
-        self.k = nn.Linear(d_model, d_model)
-        self.v = nn.Linear(d_model, d_model)
-        
+        self.qkv = nn.Linear(d_model, d_model * 3)
         self.o = nn.Linear(d_model, d_model)
         
         # Norms
@@ -32,9 +28,10 @@ class TransformerBlock(nn.Module):
         x_norm = self.ln1(x)
         
         # Project Q, K, V separately
-        q = self.q(x_norm)
-        k = self.k(x_norm)
-        v = self.v(x_norm)
+        qkv = self.qkv(x_norm)
+        q = qkv[:, :, :self.d_model]
+        k = qkv[:, :, self.d_model:self.d_model * 2]
+        v = qkv[:, :, self.d_model * 2:]
         
         # Reshape for multi-head: (B, T, num_heads, head_dim) → (B, num_heads, T, head_dim)
         q = q.view(B, T, self.num_heads, self.head_dim).permute(0, 2, 1, 3)

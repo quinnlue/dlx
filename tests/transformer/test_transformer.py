@@ -56,9 +56,9 @@ class TestTransformer(unittest.TestCase):
     tgt_pt = torch.tensor(_tgt, requires_grad=False, dtype=torch.int32).long()
     
     # Parameter mapping for weight transposition
-    WEIGHT_PARAMS = ['q_weight', 'k_weight', 'v_weight', 'o_weight', 
+    WEIGHT_PARAMS = ['qkv_weight', 'o_weight', 
                      'proj_up_weight', 'proj_down_weight', 'project_weight']
-    BIAS_PARAMS = ['q_bias', 'k_bias', 'v_bias', 'o_bias', 
+    BIAS_PARAMS = ['qkv_bias', 'o_bias', 
                    'ln1_weight', 'ln1_bias', 'ln2_weight', 'ln2_bias',
                    'proj_up_bias', 'proj_down_bias', 'project_bias']
 
@@ -93,12 +93,8 @@ class TestTransformer(unittest.TestCase):
     def get_pt_params(self, model_pt):
         """Extract parameters from PyTorch model as dictionary."""
         return {
-            'q_weight': model_pt.head1.q.weight.detach().numpy(),
-            'q_bias': model_pt.head1.q.bias.detach().numpy(),
-            'k_weight': model_pt.head1.k.weight.detach().numpy(),
-            'k_bias': model_pt.head1.k.bias.detach().numpy(),
-            'v_weight': model_pt.head1.v.weight.detach().numpy(),
-            'v_bias': model_pt.head1.v.bias.detach().numpy(),
+            'qkv_weight': model_pt.head1.qkv.weight.detach().numpy(),
+            'qkv_bias': model_pt.head1.qkv.bias.detach().numpy(),
             'o_weight': model_pt.head1.o.weight.detach().numpy(),
             'o_bias': model_pt.head1.o.bias.detach().numpy(),
             'ln1_weight': model_pt.head1.ln1.weight.detach().numpy(),
@@ -116,12 +112,8 @@ class TestTransformer(unittest.TestCase):
     def get_my_params(self, model, is_copy=True):
         """Extract parameters from custom model as dictionary."""
         params = {
-            'q_weight': model.head1.q.weight.data,
-            'q_bias': model.head1.q.bias.data,
-            'k_weight': model.head1.k.weight.data,
-            'k_bias': model.head1.k.bias.data,
-            'v_weight': model.head1.v.weight.data,
-            'v_bias': model.head1.v.bias.data,
+            'qkv_weight': model.head1.qkv.weight.data,
+            'qkv_bias': model.head1.qkv.bias.data,
             'o_weight': model.head1.o.weight.data,
             'o_bias': model.head1.o.bias.data,
             'ln1_weight': model.head1.ln1.gamma.data,
@@ -143,12 +135,8 @@ class TestTransformer(unittest.TestCase):
     def get_pt_grads(self, model_pt):
         """Extract gradients from PyTorch model as dictionary."""
         return {
-            'q_weight': model_pt.head1.q.weight.grad.detach().numpy() if model_pt.head1.q.weight.grad is not None else None,
-            'q_bias': model_pt.head1.q.bias.grad.detach().numpy() if model_pt.head1.q.bias.grad is not None else None,
-            'k_weight': model_pt.head1.k.weight.grad.detach().numpy() if model_pt.head1.k.weight.grad is not None else None,
-            'k_bias': model_pt.head1.k.bias.grad.detach().numpy() if model_pt.head1.k.bias.grad is not None else None,
-            'v_weight': model_pt.head1.v.weight.grad.detach().numpy() if model_pt.head1.v.weight.grad is not None else None,
-            'v_bias': model_pt.head1.v.bias.grad.detach().numpy() if model_pt.head1.v.bias.grad is not None else None,
+            'qkv_weight': model_pt.head1.qkv.weight.grad.detach().numpy() if model_pt.head1.qkv.weight.grad is not None else None,
+            'qkv_bias': model_pt.head1.qkv.bias.grad.detach().numpy() if model_pt.head1.qkv.bias.grad is not None else None,
             'o_weight': model_pt.head1.o.weight.grad.detach().numpy() if model_pt.head1.o.weight.grad is not None else None,
             'o_bias': model_pt.head1.o.bias.grad.detach().numpy() if model_pt.head1.o.bias.grad is not None else None,
             'ln1_weight': model_pt.head1.ln1.weight.grad.detach().numpy() if model_pt.head1.ln1.weight.grad is not None else None,
@@ -166,12 +154,8 @@ class TestTransformer(unittest.TestCase):
     def get_my_grads(self, model, is_copy=True):
         """Extract gradients from custom model as dictionary."""
         grads = {
-            'q_weight': None if model.head1.q.weight.grad is None else model.head1.q.weight.grad.data,
-            'q_bias': None if model.head1.q.bias.grad is None else model.head1.q.bias.grad.data,
-            'k_weight': None if model.head1.k.weight.grad is None else model.head1.k.weight.grad.data,
-            'k_bias': None if model.head1.k.bias.grad is None else model.head1.k.bias.grad.data,
-            'v_weight': None if model.head1.v.weight.grad is None else model.head1.v.weight.grad.data,
-            'v_bias': None if model.head1.v.bias.grad is None else model.head1.v.bias.grad.data,
+            'qkv_weight': None if model.head1.qkv.weight.grad is None else model.head1.qkv.weight.grad.data,
+            'qkv_bias': None if model.head1.qkv.bias.grad is None else model.head1.qkv.bias.grad.data,
             'o_weight': None if model.head1.o.weight.grad is None else model.head1.o.weight.grad.data,
             'o_bias': None if model.head1.o.bias.grad is None else model.head1.o.bias.grad.data,
             'ln1_weight': None if model.head1.ln1.gamma.grad is None else model.head1.ln1.gamma.grad.data,
@@ -239,12 +223,8 @@ class TestTransformer(unittest.TestCase):
         pt_params = self.get_pt_params(model_pt)
         
         # Update attention components
-        safe_update(model.head1.q.weight, pt_params['q_weight'].T, "q.weight")
-        safe_update(model.head1.q.bias, pt_params['q_bias'], "q.bias")
-        safe_update(model.head1.k.weight, pt_params['k_weight'].T, "k.weight")
-        safe_update(model.head1.k.bias, pt_params['k_bias'], "k.bias")
-        safe_update(model.head1.v.weight, pt_params['v_weight'].T, "v.weight")
-        safe_update(model.head1.v.bias, pt_params['v_bias'], "v.bias")
+        safe_update(model.head1.qkv.weight, pt_params['qkv_weight'].T, "qkv.weight")
+        safe_update(model.head1.qkv.bias, pt_params['qkv_bias'], "qkv.bias")
         safe_update(model.head1.o.weight, pt_params['o_weight'].T, "o.weight")
         safe_update(model.head1.o.bias, pt_params['o_bias'], "o.bias")
 

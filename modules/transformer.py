@@ -14,26 +14,25 @@ class Transformer(Module):
 
         if self.d_head * n_heads != d_model:
             raise ValueError(f"d_model must be divisible by n_heads, but got {d_model} and {n_heads}")
-        # (self, in_features, out_features, module_dict, layer_dict, bias=True)
-        self.q = self.linear(d_model, d_model, module_dict=module_dict, layer_type="linear", name="q")
-        self.k = self.linear(d_model, d_model, module_dict=module_dict, layer_type="linear", name="k")
-        self.v = self.linear(d_model, d_model, module_dict=module_dict, layer_type="linear", name="v")
+        
+        self.qkv = self.linear(d_model, d_model * 3, module_dict=module_dict, layer_type="linear", name="qkv")
         self.o = self.linear(d_model, d_model, module_dict=module_dict, layer_type="linear", name="o")
 
         self.proj_up = self.linear(d_model, d_model * mlp_ratio, module_dict=module_dict, layer_type="linear", name="proj_up")
         self.proj_down = self.linear(d_model * mlp_ratio, d_model, module_dict=module_dict, layer_type="linear", name="proj_down")
 
-        self.ln1 = self.layer_norm(axis=-1, module_dict=module_dict, name="ln1")
-        self.ln2 = self.layer_norm(axis=-1, module_dict=module_dict, name="ln2")
+        self.ln1 = self.layer_norm(shape=d_model, axis=-1, module_dict=module_dict, name="ln1")
+        self.ln2 = self.layer_norm(shape=d_model, axis=-1, module_dict=module_dict, name="ln2")
 
     
     def attend(self, x: Tensor):
         # x: (B, T, d_model)
         B, T, _ = x.shape
 
-        q = self.q(x)
-        k = self.k(x)
-        v = self.v(x)
+        qkv = self.qkv(x)
+        q = qkv[:, :, :self.d_model]
+        k = qkv[:, :, self.d_model:self.d_model * 2]
+        v = qkv[:, :, self.d_model * 2:]
 
         q  = q.reshape((B, T, self.n_heads, self.d_head))
         k  = k.reshape((B, T, self.n_heads, self.d_head))
@@ -45,8 +44,7 @@ class Transformer(Module):
         kt = k.transpose((0, 1, 3, 2))
 
         atten_scores = q @ kt * (1 / (self.d_head ** 0.5))
-        # TODO: remove hard coded float32
-        casual_mask = xp.triu(xp.ones((T, T)) * -xp.inf, k=1).astype(xp.float32)
+        casual_mask = xp.triu(xp.ones((T, T)) * -xp.inf, k=1).astype(atten_scores.dtype)
         atten_scores = atten_scores + casual_mask
 
         atten_probs = self.softmax(atten_scores, axis=3)

@@ -1,7 +1,7 @@
 from ..utils.backend import xp
 
 class Tensor:
-    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5, dtype=xp.float16):
+    def __init__(self, data, requires_grad=True, requires_mask=False, name=None, eps=1e-5, dtype=xp.float32):
         if isinstance(data, xp.ndarray) and data.dtype == dtype:
             self.data = data
         else:

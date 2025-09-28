@@ -10,8 +10,6 @@ class Transformer(Module):
         self.d_model = d_model
         self.mlp_ratio = mlp_ratio
 
-
-
         if self.d_head * n_heads != d_model:
             raise ValueError(f"d_model must be divisible by n_heads, but got {d_model} and {n_heads}")
         
@@ -26,7 +24,6 @@ class Transformer(Module):
 
     
     def attend(self, x: Tensor):
-        # x: (B, T, d_model)
         B, T, _ = x.shape
 
         qkv = self.qkv(x)
@@ -61,8 +58,6 @@ class Transformer(Module):
         return output
     
     def forward(self, x: Tensor):
-        B, T, _ = x.shape
-
         residual = x
         x = self.ln1(x)
 

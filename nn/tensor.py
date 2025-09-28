@@ -187,7 +187,7 @@ class Tensor:
         return self + other
     
     def __iadd__(self, other):
-        raise NotImplementedError("Not implemented")
+        raise NotImplementedError("iadd not implemented")
     
     def astype(self, dtype):
         # Edits type in place
@@ -219,12 +219,7 @@ class Tensor:
     def __matmul__(self, other):
         if not isinstance(other, Tensor):
             other = Tensor(other, requires_grad=False)
-        # Only allow 2D or higher tensors for matmul (disallow vector @ matrix, matrix @ vector, or scalar)
-        # if self.data.ndim < 2 or other.data.ndim < 2:
-        #     raise ValueError("Both operands must be at least 2D tensors for matmul.")
-        # if self.data.shape[-1] != other.data.shape[-2]:
-        #     raise ValueError(f"Shapes {self.data.shape} and {other.data.shape} not aligned for matmul.")
-        
+
         out = Tensor(xp.matmul(self.data, other.data), requires_grad=self.requires_grad or other.requires_grad)
         if out.requires_grad:
             out.parents = (self, other)
@@ -238,15 +233,9 @@ class Tensor:
                 other_T = safe_transpose(other.data)
                 self_T  = safe_transpose(self.data)
 
-                # For grad_self: grad @ other_T
                 grad_self = xp.matmul(grad.data, other_T)
-                # For grad_other: self_T @ grad
-                # Need to handle broadcasting by summing over batch dimensions
                 if self.data.ndim > 2 and other.data.ndim == 2:
-                    # Case: (batch, ..., in) @ (in, out) -> (batch, ..., out)
-                    # grad_other should be (in, out), so sum over batch dimensions
                     grad_other = xp.matmul(self_T, grad.data)
-                    # Sum over all dimensions except the last two
                     sum_axes = tuple(range(grad_other.ndim - 2))
                     if sum_axes:
                         grad_other = xp.sum(grad_other, axis=sum_axes)
@@ -287,7 +276,7 @@ class Tensor:
         return out
     
     def __isub__(self, other):
-        raise NotImplementedError("Not implemented")
+        raise NotImplementedError("isub not implemented")
     
     def __pow__(self, other):
         if not isinstance(other, (int, float)):
@@ -348,10 +337,8 @@ class Tensor:
         return self * other
     
     def __imul__(self, other):
-        raise NotImplementedError("Not implemented")
+        raise NotImplementedError("imul not implemented")
 
-
-    
     def __div__(self, other):
         if not isinstance(other, Tensor):
             other = Tensor(other, requires_grad=False)
@@ -396,10 +383,10 @@ class Tensor:
         return other.__truediv__(self)
     
     def __idiv__(self, other):
-        raise NotImplementedError("Not implemented")
+        raise NotImplementedError("idiv not implemented")
     
     def __itruediv__(self, other):
-        raise NotImplementedError("Not implemented")
+        raise NotImplementedError("itruediv not implemented")
 
     def exp(self):
         out = Tensor(xp.exp(self.data), requires_grad=self.requires_grad)
@@ -505,11 +492,9 @@ class Tensor:
             def grad_fn(grad):
                 grad.requires_grad = False
                 full = xp.zeros_like(self.data)
-                # Accumulate gradients for repeated indices
                 try:
                     xp.add.at(full, key, grad.data)
                 except Exception:
-                    # fallback for non-integer keys or if add.at is not available
                     full[key] = grad.data
                 return (Tensor(full, requires_grad=False),)
             out.grad_fn = grad_fn
@@ -518,12 +503,10 @@ class Tensor:
 
 
     def backward(self, grad=None):
-        # 1) init grad
         if grad is None:
             grad = Tensor(xp.ones_like(self.data), requires_grad=False)
         self.grad = grad
 
-        # 2) build reverse-topo order (each node visited once)
         topo = []
         visited = set()
 
@@ -538,14 +521,13 @@ class Tensor:
 
         build(self)
 
-        # 3) propagate grads once per node
-        for v in reversed(topo):  # sink -> sources
+        for v in reversed(topo):
             if v.grad is None:
-                continue  # unreachable or zero grad
+                continue
             if v.grad_fn is None or not getattr(v, "parents", None):
                 continue
 
-            parent_grads = v.grad_fn(v.grad)  # returns list aligned with v.parents
+            parent_grads = v.grad_fn(v.grad)
             for p, g in zip(v.parents, parent_grads):
                 if g is None or not getattr(p, "requires_grad", False):
                     continue
@@ -558,3 +540,4 @@ class Tensor:
         self.grad = None
         self.grad_fn = None
         self.parents = ()
+    

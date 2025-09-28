@@ -33,7 +33,7 @@ class TransformerBlock(nn.Module):
         k = qkv[:, :, self.d_model:self.d_model * 2]
         v = qkv[:, :, self.d_model * 2:]
         
-        # Reshape for multi-head: (B, T, num_heads, head_dim) → (B, num_heads, T, head_dim)
+        # Reshape for multi-head: (B, T, num_heads, head_dim) to (B, num_heads, T, head_dim)
         q = q.view(B, T, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
         k = k.view(B, T, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
         v = v.view(B, T, self.num_heads, self.head_dim).permute(0, 2, 1, 3)

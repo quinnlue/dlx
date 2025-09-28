@@ -1,4 +1,3 @@
-from .module import Module
 from .tensor import Tensor
 from ..utils.backend import xp
 import numpy as np
@@ -6,7 +5,12 @@ import os
 from ..utils.lr_scheduler import LRScheduler
 
 class Optimizer:
-    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None):
+    def __init__(
+        self, 
+        params, lr: LRScheduler | float = 1e-3, 
+        clip_norm=1.0, 
+        precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None
+    ):
         # Set precision -------------------------------------------------------------
         if precision is not None:
             if isinstance(precision, tuple):
@@ -36,9 +40,7 @@ class Optimizer:
             self.master_eps = 1e-8
         else:
             raise ValueError("master_dtype must be float16, float32, or float64")
-
-        
-        
+    
         # Set params -------------------------------------------------------------
         self._raw_params = params
         self.params = {}
@@ -141,8 +143,16 @@ class Optimizer:
         return xp.sqrt(total_norm)
 
 class AdamW(Optimizer):
-    def __init__(self, params, lr: LRScheduler | float = 1e-3, clip_norm=1.0, weight_decay=0.01, beta_1=0.9, beta_2=0.95, precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None):
-        # Fix: Pass the actual precision parameter instead of hardcoding
+    def __init__(
+        self,
+        params, 
+        lr: LRScheduler | float = 1e-3, 
+        clip_norm=1.0, 
+        weight_decay=0.01, 
+        beta_1=0.9, 
+        beta_2=0.95, 
+        precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None
+    ):
         super().__init__(params, lr=lr, clip_norm=clip_norm, precision=precision)
         self.weight_decay = weight_decay
         self.beta_1 = beta_1
@@ -168,9 +178,6 @@ class AdamW(Optimizer):
             np.save(f"{path}/optim/m_t/{name}.npy", param['m_t'])
             np.save(f"{path}/optim/v_t/{name}.npy", param['v_t'])
 
-
-
-
     def load_state(self, path):
         self._load_params(path)
         for name, param in self.params.items():
@@ -179,17 +186,13 @@ class AdamW(Optimizer):
 
         self.t = int(np.load(f"{path}/optim/t.npy"))
 
-
-
     def step(self):
         if self.clip_norm is not None:
             total_norm = self._get_total_norm()
             clip_coef = 1.0
             if total_norm > self.clip_norm:
                 clip_coef = float(self.clip_norm / (total_norm + 1e-8))
-        
-
-
+    
         for name, param in self.params.items():
             if param['param'].grad is None:
                 continue
@@ -265,47 +268,21 @@ class SGD(Optimizer):
         self.clip_norm = clip_norm
 
     def step(self):
-        """SGD without momentum, equivalent to torch.optim.SGD (no momentum, no weight decay).
-        Supports optional global gradient clipping via ``clip_norm``.
-        """
         # Increase timestep
         self.t += 1
         lr_t = self.get_lr(self.t)
+        if self.clip_norm is not None:
+            total_norm = self._get_total_norm()
 
         for param in self.params.values():
             if param['param'].grad is None:
                 continue
 
             grad = param['param'].grad
-            # grad = self._clip_norm(grad)
+            grad = self._clip_norm(grad, total_norm)
+            param['param'].grad = grad
+
             grad = self.reduce_like(grad, param['param'].data.shape)
 
             param['param'].data = param['param'].data - lr_t * grad.data
-            del grad
-
-
-        # # Compute global grad-norm for clipping (L2)
-        # total_norm = 0.0
-        # for param in self.params.values():
-        #     if param['param'].grad is None:
-        #         continue
-        #     g = param['param'].grad.data
-        #     total_norm += (g ** 2).sum()
-        # total_norm = xp.sqrt(total_norm)
-
-        # clip_coef = 1.0
-        # if total_norm > self.clip_norm:
-        #     clip_coef = self.clip_norm / (total_norm + 1e-6)
-
-        # # Parameter update
-        # for param in self.params.values():
-        #     p_tensor = param['param']
-        #     grad = p_tensor.grad
-        #     if grad is None:
-        #         continue
-        #     # Broadcast-reduce if shapes mismatch (should rarely happen here)
-        #     if grad.data.shape != p_tensor.data.shape:
-        #         grad = self.reduce_like(grad, p_tensor.data.shape)
-        #     grad_data = grad.data * clip_coef
-        #     p_tensor.data -= lr_t * grad_data
 

@@ -109,10 +109,10 @@ class Module:
         layer = Linear(in_features, out_features, module_dict, layer_dict, use_bias, name)
         return layer
         
-    def transformer(self, d_model, n_heads, mlp_ratio=4, module_type="transformer"):
+    def transformer(self, d_model, n_heads, mlp_ratio=4, lora=False, lora_r=16, lora_alpha=16, module_type="transformer"):
         from ..modules.transformer import Transformer
         module_dict = self.register_module(module_type)
-        layer = Transformer(d_model, n_heads, mlp_ratio, module_dict)
+        layer = Transformer(d_model, n_heads, mlp_ratio, lora, lora_r, lora_alpha, module_dict)
         return layer
     
     def embedding(self, vocab_size, d_model, max_seq_len, module_type="embedding", layer_type="embedding", name="embedding"):

@@ -79,28 +79,35 @@ class Transformer(Module):
         output = self.o(output)
 
         return output
-    
+
     def forward(self, x: Tensor):
-        residual = x
-        x = self.ln1(x)
-
-        atten_out = self.attend(x)
-
-        x = atten_out + residual
-
-        # MLP
-        residual = x
+        x = x + self.attend(self.ln1(x))
         x = self.ln2(x)
-
-        x_mlp = self.proj_up(x)
-
-        x_mlp = self.gelu(x_mlp)
-
-        x_mlp = self.proj_down(x_mlp)
-
-        x = x_mlp + residual
-
+        mlp_out = self.mlp(x)
+        x = x + mlp_out
         return x
+    
+    # def forward(self, x: Tensor):
+    #     residual = x
+    #     x = self.ln1(x)
+
+    #     atten_out = self.attend(x)
+
+    #     x = atten_out + residual
+
+    #     # MLP
+    #     residual = x
+    #     x = self.ln2(x)
+
+    #     x_mlp = self.proj_up(x)
+
+    #     x_mlp = self.gelu(x_mlp)
+
+    #     x_mlp = self.proj_down(x_mlp)
+
+    #     x = x_mlp + residual
+
+    #     return x
     
     def __call__(self, x: Tensor):
         return self.forward(x)

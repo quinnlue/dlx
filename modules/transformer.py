@@ -80,6 +80,13 @@ class Transformer(Module):
 
         return output
 
+
+    def mlp(self, x: Tensor):
+        x = self.proj_up(x)
+        x = self.gelu(x)
+        x = self.proj_down(x)
+        return x
+
     def forward(self, x: Tensor):
         x = x + self.attend(self.ln1(x))
         x = self.ln2(x)

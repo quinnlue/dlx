@@ -29,14 +29,19 @@ class Transformer(Module):
         self.o = self.linear(d_model, d_model, module_dict=module_dict, layer_type="linear", name="o")
 
         if self.lora:
-            self.q_lora_A = self.linear(d_model, lora_r, bias=False)
-            self.k_lora_A = self.linear(d_model, lora_r, bias=False)
-            self.v_lora_A = self.linear(d_model, lora_r, bias=False)
-            self.q_lora_B = self.linear(lora_r, d_model, bias=False)
-            self.k_lora_B = self.linear(lora_r, d_model, bias=False)
-            self.v_lora_B = self.linear(lora_r, d_model, bias=False)
-            self.o_lora_A = self.linear(d_model, lora_r, bias=False)
-            self.o_lora_B = self.linear(lora_r, d_model, bias=False)
+            self.q_lora_A = self.linear(d_model, lora_r, module_dict=module_dict, layer_type="linear", bias=False, name="q_lora_A")
+            self.k_lora_A = self.linear(d_model, lora_r, module_dict=module_dict, layer_type="linear", bias=False, name="k_lora_A")
+            self.v_lora_A = self.linear(d_model, lora_r, module_dict=module_dict, layer_type="linear", bias=False, name="v_lora_A")
+            self.q_lora_B = self.linear(lora_r, d_model, module_dict=module_dict, layer_type="linear", bias=False, name="q_lora_B")
+            self.k_lora_B = self.linear(lora_r, d_model, module_dict=module_dict, layer_type="linear", bias=False, name="k_lora_B")
+            self.v_lora_B = self.linear(lora_r, d_model, module_dict=module_dict, layer_type="linear", bias=False, name="v_lora_B")
+            self.o_lora_A = self.linear(d_model, lora_r, module_dict=module_dict, layer_type="linear", bias=False, name="o_lora_A")
+            self.o_lora_B = self.linear(lora_r, d_model, module_dict=module_dict, layer_type="linear", bias=False, name="o_lora_B")
+
+            self.proj_up_lora_A = self.linear(d_model, lora_r, module_dict=module_dict, layer_type="linear", bias=False, name="proj_up_lora_A")
+            self.proj_up_lora_B = self.linear(lora_r, d_model * mlp_ratio, module_dict=module_dict, layer_type="linear", bias=False, name="proj_up_lora_B")
+            self.proj_down_lora_A = self.linear(d_model * mlp_ratio, lora_r, module_dict=module_dict, layer_type="linear", bias=False, name="proj_down_lora_A")
+            self.proj_down_lora_B = self.linear(lora_r, d_model, module_dict=module_dict, layer_type="linear", bias=False, name="proj_down_lora_B")
             self.scaling = self.lora_alpha / self.lora_r
 
         self.proj_up = self.linear(d_model, d_model * mlp_ratio, module_dict=module_dict, layer_type="linear", name="proj_up")
@@ -58,6 +63,14 @@ class Transformer(Module):
         k  = k.reshape((B, T, self.n_heads, self.d_head))
         v  = v.reshape((B, T, self.n_heads, self.d_head))
 
+        if self.lora:
+            q_lora_delta = self.scaling * (x @ self.q_lora_A.weight.T @ self.q_lora_B.weight.T)
+            k_lora_delta = self.scaling * (x @ self.k_lora_A.weight.T @ self.k_lora_B.weight.T)
+            v_lora_delta = self.scaling * (x @ self.v_lora_A.weight.T @ self.v_lora_B.weight.T)
+            q = q + q_lora_delta
+            k = k + k_lora_delta
+            v = v + v_lora_delta
+
         q = q.transpose((0, 2, 1, 3))
         k = k.transpose((0, 2, 1, 3))
         v = v.transpose((0, 2, 1, 3))
@@ -75,6 +88,9 @@ class Transformer(Module):
         output = output.transpose((0, 2, 1, 3))
 
         output = output.reshape((B, T, -1))
+
+        if self.lora:
+            output = output + self.scaling * (output @ self.o_lora_A.weight.T @ self.o_lora_B.weight.T)
 
         output = self.o(output)
 

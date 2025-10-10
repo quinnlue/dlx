@@ -101,12 +101,12 @@ class Module:
        layer = LayerNorm(shape, axis, module_dict, layer_dict, eps=eps)
        return layer
 
-    def linear(self, in_features, out_features, use_bias=True, module_type="linear", layer_type="linear", name=None, module_dict=None):
+    def linear(self, in_features, out_features, bias=True, module_type="linear", layer_type="linear", name=None, module_dict=None):
         from ..modules.linear import Linear
         if module_dict is None:
             module_dict = self.register_module(module_type)
         layer_dict = self.register_layer(layer_type, module_dict, name)
-        layer = Linear(in_features, out_features, module_dict, layer_dict, use_bias, name)
+        layer = Linear(in_features, out_features, module_dict, layer_dict, bias, name)
         return layer
         
     def transformer(self, d_model, n_heads, mlp_ratio=4, lora=False, lora_r=16, lora_alpha=16, module_type="transformer"):

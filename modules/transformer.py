@@ -59,10 +59,6 @@ class Transformer(Module):
         k = qkv[:, :, self.d_model:self.d_model * 2]
         v = qkv[:, :, self.d_model * 2:]
 
-        q  = q.reshape((B, T, self.n_heads, self.d_head))
-        k  = k.reshape((B, T, self.n_heads, self.d_head))
-        v  = v.reshape((B, T, self.n_heads, self.d_head))
-
         if self.lora:
             q_lora_delta = self.scaling * (x @ self.q_lora_A.weight@ self.q_lora_B.weight)
             k_lora_delta = self.scaling * (x @ self.k_lora_A.weight@ self.k_lora_B.weight)
@@ -70,6 +66,12 @@ class Transformer(Module):
             q = q + q_lora_delta
             k = k + k_lora_delta
             v = v + v_lora_delta
+
+        q  = q.reshape((B, T, self.n_heads, self.d_head))
+        k  = k.reshape((B, T, self.n_heads, self.d_head))
+        v  = v.reshape((B, T, self.n_heads, self.d_head))
+
+
 
         q = q.transpose((0, 2, 1, 3))
         k = k.transpose((0, 2, 1, 3))

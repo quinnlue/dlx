@@ -64,9 +64,9 @@ class Transformer(Module):
         v  = v.reshape((B, T, self.n_heads, self.d_head))
 
         if self.lora:
-            q_lora_delta = self.scaling * (x @ self.q_lora_A.weight.T @ self.q_lora_B.weight.T)
-            k_lora_delta = self.scaling * (x @ self.k_lora_A.weight.T @ self.k_lora_B.weight.T)
-            v_lora_delta = self.scaling * (x @ self.v_lora_A.weight.T @ self.v_lora_B.weight.T)
+            q_lora_delta = self.scaling * (x @ self.q_lora_A.weight.transpose((1,0)) @ self.q_lora_B.weight.transpose((1,0)))
+            k_lora_delta = self.scaling * (x @ self.k_lora_A.weight.transpose((1,0)) @ self.k_lora_B.weight.transpose((1,0)))
+            v_lora_delta = self.scaling * (x @ self.v_lora_A.weight.transpose((1,0)) @ self.v_lora_B.weight.transpose((1,0)))
             q = q + q_lora_delta
             k = k + k_lora_delta
             v = v + v_lora_delta
@@ -90,7 +90,7 @@ class Transformer(Module):
         output = output.reshape((B, T, -1))
 
         if self.lora:
-            output = output + self.scaling * (output @ self.o_lora_A.weight.T @ self.o_lora_B.weight.T)
+            output = output + self.scaling * (output @ self.o_lora_A.weight.transpose((1,0)) @ self.o_lora_B.weight.transpose((1,0)))
 
         output = self.o(output)
 

@@ -100,9 +100,18 @@ class Transformer(Module):
 
 
     def mlp(self, x: Tensor):
-        x = self.proj_up(x)
-        x = self.gelu(x)
-        x = self.proj_down(x)
+        if self.lora:
+            proj_up_lora_delta = self.scaling * (x @ self.proj_up_lora_A.weight @ self.proj_up_lora_B.weight)
+            x = self.proj_up(x) + proj_up_lora_delta
+            
+            x = self.gelu(x)
+            
+            proj_down_lora_delta = self.scaling * (x @ self.proj_down_lora_A.weight @ self.proj_down_lora_B.weight)
+            x = self.proj_down(x) + proj_down_lora_delta
+        else:
+            x = self.proj_up(x)
+            x = self.gelu(x)
+            x = self.proj_down(x)
         return x
 
     def forward(self, x: Tensor):

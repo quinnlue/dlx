@@ -51,7 +51,7 @@ class Transformer(Module):
         self.ln2 = self.layer_norm(shape=d_model, axis=-1, module_dict=module_dict, name="ln2")
 
 
-    def cached_attend(self, x: Tensor, k_cache: Tensor, v_cache: Tensor):
+    def cached_attend(self, x: Tensor, k_cache: Tensor, v_cache: Tensor, current_position: int):
         # kv_cache is of shape (batch_size, max_seq_len, d_model)
         # x is of shape (batch_size, seq_len, d_model)
         B, T, _ = x.shape
@@ -73,12 +73,12 @@ class Transformer(Module):
             v = v + v_lora_delta
 
 
-        k_cache.data[:, T-1, :] = k.data
-        v_cache.data[:, T-1, :] = v.data
+        k_cache.data[:, current_position, :] = k.data
+        v_cache.data[:, current_position, :] = v.data
 
         q = q.reshape((B, 1, self.n_heads, self.d_head))
-        k_cached = k_cache[:, :T, :].reshape((B, T, self.n_heads, self.d_head))
-        v_cached = v_cache[:, :T, :].reshape((B, T, self.n_heads, self.d_head))
+        k_cached = k_cache[:, :current_position + 1, :].reshape((B, current_position + 1, self.n_heads, self.d_head))
+        v_cached = v_cache[:, :current_position + 1, :].reshape((B, current_position + 1, self.n_heads, self.d_head))
 
         q = q.transpose((0, 2, 1, 3))
         k_cached = k_cached.transpose((0, 2, 1, 3))
@@ -87,7 +87,7 @@ class Transformer(Module):
 
         atten_scores = q @ kt_cached * (1 / (self.d_head ** 0.5))
 
-        atten_probs = self.softmax(atten_scores, axis=3) # (B, n_heads, 1, T)
+        atten_probs = self.softmax(atten_scores, axis=3) # (B, n_heads, 1, current_position + 1)
 
         output = atten_probs @ v_cached
 
@@ -167,10 +167,11 @@ class Transformer(Module):
     def forward(
         self, x: Tensor, 
         k_cache: Tensor | None = None, 
-        v_cache: Tensor | None = None
+        v_cache: Tensor | None = None,
+        current_position: int = 0
     ):
         if k_cache is not None and v_cache is not None:
-            x = x + self.cached_attend(self.ln1(x), k_cache, v_cache)
+            x = x + self.cached_attend(self.ln1(x), k_cache, v_cache, current_position)
         else:
             x = x + self.attend(self.ln1(x))
 
@@ -201,8 +202,8 @@ class Transformer(Module):
 
     #     return x
     
-    def __call__(self, x: Tensor, k_cache: Tensor | None = None, v_cache: Tensor | None = None):
-        return self.forward(x, k_cache, v_cache)
+    def __call__(self, x: Tensor, k_cache: Tensor | None = None, v_cache: Tensor | None = None, current_position: int = 0):
+        return self.forward(x, k_cache, v_cache, current_position)
 
 
 

@@ -58,7 +58,7 @@ class Transformer(Module):
         if B != 1:
             raise ValueError(f"Inference mode only supports batch size 1")
 
-        x = x[:, -1, :]
+        x = x[:, :-1, :]
         qkv = self.qkv(x)
         q = qkv[:, :, :self.d_model]
         k = qkv[:, :, self.d_model:self.d_model * 2]

@@ -201,8 +201,8 @@ class Transformer(Module):
 
     #     return x
     
-    def __call__(self, x: Tensor):
-        return self.forward(x)
+    def __call__(self, x: Tensor, k_cache: Tensor | None = None, v_cache: Tensor | None = None):
+        return self.forward(x, k_cache, v_cache)
 
 
 

@@ -73,8 +73,8 @@ class Transformer(Module):
             v = v + v_lora_delta
 
 
-        k_cache[:, T-1, :] = k
-        v_cache[:, T-1, :] = v
+        k_cache.data[:, T-1, :] = k.data
+        v_cache.data[:, T-1, :] = v.data
 
         q = q.reshape((B, 1, self.n_heads, self.d_head))
         k_cached = k_cache[:, :T, :].reshape((B, T, self.n_heads, self.d_head))

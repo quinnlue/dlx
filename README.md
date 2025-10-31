@@ -16,21 +16,9 @@ A deep learning framework with custom tensor operations, neural network modules,
 ### From Source
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/quinnlue/dlx.git
 cd transformer
 pip install -e .
-```
-
-### With GPU Support
-
-```bash
-pip install -e .[gpu]
-```
-
-### Development Installation
-
-```bash
-pip install -e .[dev]
 ```
 
 ## Quick Start
@@ -78,28 +66,4 @@ dlx/
 ├── experiments/       # Experimental code and notebooks
 └── tests/            # Test suite
 ```
-
-## Development
-
-### Running Tests
-
-```bash
-pytest
-```
-
-### Code Formatting
-
-```bash
-black dlx/
-```
-
-### Type Checking
-
-```bash
-mypy dlx/
-```
-
-## License
-
-MIT License
 

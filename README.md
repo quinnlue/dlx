@@ -1,4 +1,4 @@
-# DLX - Deep Learning eXperiments
+# DLX - Deep Learning X
 
 A deep learning framework with custom tensor operations, neural network modules, and transformer implementations.
 

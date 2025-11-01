@@ -39,7 +39,7 @@ if __name__ == "__main__":
         final_lr=1e-6,
     )
 
-    steps = list(range(10000))
+    steps = list[int](range(10000))
     lrs = [scheduler(step) for step in steps]
 
     plt.plot(steps, lrs)

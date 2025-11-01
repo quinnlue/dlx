@@ -1,4 +1,3 @@
-import torch
 import random
 try:
     import cupy as xp
@@ -12,6 +11,7 @@ except (ImportError, ModuleNotFoundError):
 
 
 def set_seed(seed):
+    import torch
     random.seed(seed)
     xp.random.seed(seed)
     torch.manual_seed(seed)

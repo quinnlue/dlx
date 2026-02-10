@@ -21,7 +21,6 @@ class Module:
         }
         """
 
-        # ── Resolve device ──
         if device is None:
             device = get_default_device()
         elif isinstance(device, str):

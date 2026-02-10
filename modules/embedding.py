@@ -17,7 +17,10 @@ class Embedding(nn.Module):
     def get_sentence_embedding(self, idx):
         if isinstance(idx, Tensor):
             idx = idx.data
-        idx = idx.astype(xp.int32)
+
+        if idx.dtype not in [xp.int32, xp.int64, xp.uint32, xp.uint64, xp.long]:
+            raise ValueError(f"Index must be an integer type, got {idx.dtype}")
+
         B, T = idx.shape
         embed_vectors = self.W[idx]
         pe_slice = self.pe[:T][None, :, :]

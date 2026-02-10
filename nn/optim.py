@@ -12,9 +12,7 @@ class Optimizer:
         precision: tuple[np.dtype, np.dtype] | np.dtype | None = None,
         device: "str | Device | None" = None,
     ):
-        # ── Resolve device ──
         if device is None:
-            # Infer from the first parameter tensor, fall back to default
             first = next(iter(params.values()), None)
             if first is not None and hasattr(first, "device"):
                 device = first.device
@@ -200,7 +198,7 @@ class AdamW(Optimizer):
 
             if self.clip_norm is not None:
                 grad = self._clip_norm(grad, total_norm)
-                param['param'].grad = grad  # Ensure clipped grad is used for update and logging
+                param['param'].grad = grad
 
 
             if self.mixed_precision:
@@ -222,11 +220,10 @@ class AdamW(Optimizer):
 
             grad_data = grad.data.astype(dtype)
 
-            # ---------- decoupled weight-decay (AdamW style) ----------
+            # Decoupled weight-decay
             if self.weight_decay != 0.0:
                 wd_lr = self.get_lr(self.t + 1) * self.weight_decay
                 master_param_tensor.data = master_param_tensor.data - wd_lr * master_param_tensor.data
-            # ----------------------------------------------------------
 
             m_t = m_t * self.beta_1 + (1 - self.beta_1) * grad_data
             v_t = v_t * self.beta_2 + (1 - self.beta_2) * (grad_data ** 2)

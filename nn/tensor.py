@@ -66,7 +66,6 @@ class Tensor:
     def dtype(self):
         return self.data.dtype
 
-    @property
     def __len__(self):
         return len(self.data)
 

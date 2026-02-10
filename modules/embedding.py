@@ -18,7 +18,7 @@ class Embedding(nn.Module):
         if isinstance(idx, Tensor):
             idx = idx.data
 
-        if idx.dtype not in [xp.int32, xp.int64, xp.uint32, xp.uint64, xp.long]:
+        if idx.dtype not in [xp.int32, xp.int64, xp.uint32, xp.uint64]:
             raise ValueError(f"Index must be an integer type, got {idx.dtype}")
 
         B, T = idx.shape

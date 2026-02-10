@@ -1,10 +1,10 @@
 import os
 import numpy as np
-from ..utils.backend import xp
+from ..utils.backend import Device, get_default_device
 from .tensor import Tensor
 
 class Module:
-    def __init__(self, architecture={}):
+    def __init__(self, architecture={}, device=None):
         self.architecture = architecture
 
         """
@@ -21,8 +21,15 @@ class Module:
         }
         """
 
+        # ── Resolve device ──
+        if device is None:
+            device = get_default_device()
+        elif isinstance(device, str):
+            device = Device(device)
+        self.device = device
+
         self.is_training = True
-        self.is_cuda = xp.__name__ == "cupy"
+        self.is_cuda = self.device.type == "cuda"
 
     def __str__(self):
         lines = ["Architecture:"]
@@ -40,7 +47,8 @@ class Module:
         return sum(p.n_params for p in self.parameters().values())
 
     def _build(self, input_shape: tuple):
-        dummy_input = Tensor(xp.zeros(input_shape), requires_grad=False)
+        xp = self.device.xp
+        dummy_input = Tensor(xp.zeros(input_shape), requires_grad=False, device=self.device)
         self.forward(dummy_input)
 
     def eval(self, X: Tensor, y: Tensor, loss_fn):
@@ -123,6 +131,7 @@ class Module:
         return layer
 
     def xavier_uniform(self, shape):
+        xp = self.device.xp
         fan_in, fan_out = shape[-1], shape[-2] if len(shape) > 1 else (shape[0], shape[0])
         limit = xp.sqrt(6 / (fan_in + fan_out))
         return xp.random.uniform(-limit, limit, size=shape)

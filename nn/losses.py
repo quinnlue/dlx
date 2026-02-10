@@ -1,27 +1,29 @@
 from .tensor import Tensor
-from ..utils.backend import xp
 
-is_cuda = xp.__name__ == "cupy"
 
 def MeanSquaredError(y_hat: Tensor, y: Tensor):
-    return ((y_hat - y) ** 2).mean().exp().log()
+    return ((y_hat - y) ** 2).mean()
 
 def BinaryCrossEntropyWithLogits(logits: Tensor, y: Tensor):
+    xp = logits.device.xp
+    device = logits.device
     max_logits = xp.maximum(logits.data, 0)
     log_term = xp.log1p(xp.exp(-xp.abs(logits.data)))
     loss_data = (max_logits - logits.data * y.data + log_term).mean()
 
-    out = Tensor(loss_data, requires_grad=logits.requires_grad)
+    out = Tensor(loss_data, requires_grad=logits.requires_grad, device=device)
     if out.requires_grad:
         out.parents = (logits,)
         def grad_fn(grad):
             sigmoid = 1.0 / (1.0 + xp.exp(-logits.data))
             grad_logits  = (sigmoid - y.data) * grad.data / logits.data.size
-            return (Tensor(grad_logits, requires_grad=False),)
+            return (Tensor(grad_logits, requires_grad=False, device=device),)
         out.grad_fn = grad_fn
     return out
 
 def CrossEntropyWithLogits(logits: Tensor, y: Tensor, axis=-1):
+    xp = logits.device.xp
+    device = logits.device
     eps = 1e-5
 
     # Handle (B, S, V) and (B, V)
@@ -51,7 +53,7 @@ def CrossEntropyWithLogits(logits: Tensor, y: Tensor, axis=-1):
     target_log_probs = log_softmax[idx]
     loss_data = -target_log_probs.mean()
 
-    out = Tensor(loss_data, requires_grad=logits.requires_grad)
+    out = Tensor(loss_data, requires_grad=logits.requires_grad, device=device)
 
     if out.requires_grad:
         out.parents = (logits,)
@@ -64,7 +66,7 @@ def CrossEntropyWithLogits(logits: Tensor, y: Tensor, axis=-1):
             
             factor = 1 / (logits.data.shape[0] * logits.data.shape[1])
             grad_out = grad_input * factor * grad.data
-            return (Tensor(grad_out, requires_grad=False),)
+            return (Tensor(grad_out, requires_grad=False, device=device),)
         out.grad_fn = grad_fn
 
     return out

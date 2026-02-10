@@ -1,5 +1,5 @@
 from .tensor import Tensor
-from ..utils.backend import xp
+from ..utils.backend import Device, get_default_device
 import numpy as np
 import os
 from ..utils.lr_scheduler import LRScheduler
@@ -9,8 +9,22 @@ class Optimizer:
         self, 
         params, lr: LRScheduler | float = 1e-3, 
         clip_norm=1.0, 
-        precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None
+        precision: tuple[np.dtype, np.dtype] | np.dtype | None = None,
+        device: "str | Device | None" = None,
     ):
+        # ── Resolve device ──
+        if device is None:
+            # Infer from the first parameter tensor, fall back to default
+            first = next(iter(params.values()), None)
+            if first is not None and hasattr(first, "device"):
+                device = first.device
+            else:
+                device = get_default_device()
+        elif isinstance(device, str):
+            device = Device(device)
+        self.device = device
+        xp = self.device.xp
+
         # Set precision -------------------------------------------------------------
         if precision is not None:
             if isinstance(precision, tuple):
@@ -18,7 +32,7 @@ class Optimizer:
                     raise ValueError("precision must contain a tuple of two elements")
                 self.model_dtype, self.master_dtype = precision
                 self.mixed_precision = True
-            elif isinstance(precision, xp.dtype):
+            elif isinstance(precision, np.dtype):
                 self.model_dtype = self.master_dtype = precision
                 self.mixed_precision = False
             else:
@@ -51,7 +65,7 @@ class Optimizer:
 
             # Set master param if mixed precision
             if self.mixed_precision:
-                self.params[name]["param_master"] = Tensor(param.data.astype(self.master_dtype), requires_grad=False)
+                self.params[name]["param_master"] = Tensor(param.data.astype(self.master_dtype), requires_grad=False, device=self.device)
                 self.params[name]["param_master"].requires_grad = False
 
         # Set lr scheduler -------------------------------------------------------------
@@ -60,7 +74,7 @@ class Optimizer:
         self.t = 0
 
         self.clip_norm = clip_norm
-        self.is_cuda = xp.__name__ == "cupy"
+        self.is_cuda = self.device.type == "cuda"
 
 
     def _clip_norm(self, grad: Tensor, total_norm: float):
@@ -81,30 +95,8 @@ class Optimizer:
         self.lr_scheduler = lr_scheduler
 
     def reduce_like(self, grad: Tensor, target_shape: tuple) -> Tensor:
-        gshape = grad.data.shape
-        tshape = target_shape
-
-        if gshape == tshape:
-            return grad
-
-        if len(gshape) > len(tshape):
-            tshape = (1,) * (len(gshape) - len(tshape)) + tshape
-
-        assert len(gshape) == len(tshape), f"Incompatible shapes: {gshape} vs {target_shape}"
-
-        axes_to_sum = []
-        for i, (gdim, tdim) in enumerate(zip(gshape, tshape)):
-            if gdim != tdim:
-                if tdim == 1:
-                    axes_to_sum.append(i)
-                else:
-                    raise ValueError(f"Cannot broadcast grad shape {gshape} to target {target_shape}")
-
-        for axis in reversed(axes_to_sum):
-            grad = Tensor(grad.data.sum(axis=axis, keepdims=True))
-
-        grad = Tensor(grad.data.reshape(target_shape))
-        return grad
+        reduced = Tensor._reduce_broadcast(grad.data, target_shape)
+        return Tensor(reduced, requires_grad=False, device=self.device)
 
     def zero_grad(self):
         for param in self.params.values():
@@ -113,6 +105,7 @@ class Optimizer:
 
     def _save_params(self, path):
         # ONLY CALL WITHIN THE SPECIFIC OPTIMIZER (AdamW, Standard, etc.)
+        xp = self.device.xp
         os.makedirs(path, exist_ok=True)
         os.makedirs(f"{path}/model", exist_ok=True)
 
@@ -126,6 +119,7 @@ class Optimizer:
 
     def _load_params(self, path):
         # ONLY CALL WITHIN THE SPECIFIC OPTIMIZER (AdamW, Standard, etc.)
+        xp = self.device.xp
         for name, param in self.params.items():
             if self.mixed_precision:
                 param['param_master'].data = xp.load(f"{path}/model/{name}.npy")
@@ -135,6 +129,7 @@ class Optimizer:
 
 
     def _get_total_norm(self):
+        xp = self.device.xp
         total_norm = 0.0
         for param in self.params.values():
             if param['param'].grad is None:
@@ -151,14 +146,16 @@ class AdamW(Optimizer):
         weight_decay=0.01, 
         beta_1=0.9, 
         beta_2=0.95, 
-        precision: tuple[xp.dtype, xp.dtype] | xp.dtype | None = None
+        precision: tuple[np.dtype, np.dtype] | np.dtype | None = None,
+        device: "str | Device | None" = None,
     ):
-        super().__init__(params, lr=lr, clip_norm=clip_norm, precision=precision)
+        super().__init__(params, lr=lr, clip_norm=clip_norm, precision=precision, device=device)
         self.weight_decay = weight_decay
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.clip_norm = clip_norm
 
+        xp = self.device.xp
         for name, param in self.params.items():
             # Create momentum and variance tensors with the correct dtype and shape
             param_shape = param['param'].data.shape
@@ -179,6 +176,7 @@ class AdamW(Optimizer):
             np.save(f"{path}/optim/v_t/{name}.npy", param['v_t'])
 
     def load_state(self, path):
+        xp = self.device.xp
         self._load_params(path)
         for name, param in self.params.items():
             param['m_t'] = xp.array(np.load(f"{path}/optim/m_t/{name}.npy"))
@@ -187,6 +185,7 @@ class AdamW(Optimizer):
         self.t = int(np.load(f"{path}/optim/t.npy"))
 
     def step(self):
+        xp = self.device.xp
         if self.clip_norm is not None:
             total_norm = self._get_total_norm()
             clip_coef = 1.0

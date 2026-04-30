@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-
 class LRScheduler:
     def __init__(self, warmup_steps: int, total_steps: int, min_lr: float, max_lr: float, final_lr: float):
         self.warmup_steps = warmup_steps
@@ -42,12 +40,6 @@ if __name__ == "__main__":
     steps = list[int](range(10000))
     lrs = [scheduler(step) for step in steps]
 
-    plt.plot(steps, lrs)
-    plt.title("1Cycle LR Schedule with Final Dip")
-    plt.xlabel("Step")
-    plt.ylabel("Learning Rate")
-    plt.grid(True)
-    plt.show()
 
     
 
